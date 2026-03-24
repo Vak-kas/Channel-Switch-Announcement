@@ -7,12 +7,14 @@
 #include <string>
 #include <unistd.h>
 #include <iostream>
+#include "mac.h"
 
 
 
 
 struct Config {
     std::string interface;
-    std::string ap_mac;
-    std::string ap_ssid;
+    Mac ap_mac;
 };
+
+extern Config config;
