@@ -1,9 +1,9 @@
-#include <iostream>
 #include "pch.h"
+#include "handle.h"
 
 void usage()
 {
-    std::cout << "Usage: ./csa <interface>" << std::endl;
+    std::cout << "Usage: ./csa <interface> " << std::endl;
 }
 
 int check_args(int argc, char* argv[])
@@ -22,19 +22,14 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE ;
     }
 
-    // PCAP initialization
+    //==========PCAP initialization==========
     char* dev = argv[1];
     char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* pcap = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
-    int dlt = pcap_datalink(pcap);
-    std::cout << "DLT: " << dlt << std::endl;
-    if (pcap == nullptr) 
-    {
-		fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
-		return EXIT_FAILURE;
-	}
-
-
+    pcap_t* pcap = handle_init(dev, errbuf);
+    if(pcap == nullptr) {
+        return EXIT_FAILURE;
+    }
+    //=======================================
 
     while (true) 
     {
