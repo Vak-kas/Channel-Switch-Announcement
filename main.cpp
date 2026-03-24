@@ -1,6 +1,7 @@
 #include "mac.h"
 #include "pch.h"
 #include "handler.h"
+#include "macframe.h"
 
 
 void usage()
@@ -24,38 +25,23 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE ;
     }
     //==========Config initialization==========
+
     Config config;
     config.interface = argv[1];
     config.ap_mac = Mac(argv[2]);
 
     //==========PCAP initialization==========
+
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t* pcap = handle_init(config.interface.c_str(), errbuf);
-    if(pcap == nullptr) {
+    if(pcap == nullptr) 
+    {
         return EXIT_FAILURE;
     }
-    //=======================================
-
-    while (true) 
-    {
-        struct pcap_pkthdr* header;
-        const u_char* packet;
-        int res = pcap_next_ex(pcap, &header, &packet);
-        if (res == 0)
-        {
-            continue; //time out
-        } 
-        else if(res <0)
-        { // error
-            printf("pcap_next_ex return %d(%s)\n", res, pcap_geterr(pcap));
-            break;
-        }
-        else
-        {
-            printf("패킷 길이: %d\n", header->caplen);
-        }
-    }
-
-    std::cout << "Hello, World!" << std::endl;
+    //=========Find target AP's beacon frame=========
+    const u_char* packet;
+    int len;
+    packet = find_target_beacon(pcap, config.ap_mac, &len);
+    dump(packet, len);
     return 0;
 }
