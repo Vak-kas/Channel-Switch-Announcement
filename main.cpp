@@ -1,14 +1,16 @@
+#include "mac.h"
 #include "pch.h"
 #include "handler.h"
 
+
 void usage()
 {
-    std::cout << "Usage: ./csa <interface> " << std::endl;
+    std::cout << "Usage: ./csa <interface> <ap_mac> " << std::endl;
 }
 
 int check_args(int argc, char* argv[])
 {
-    if (argc != 2) {
+    if (argc != 3) {
         usage();
         return EXIT_FAILURE;
     }
@@ -21,11 +23,14 @@ int main(int argc, char* argv[]) {
     if (check_args(argc, argv) == EXIT_FAILURE) {
         return EXIT_FAILURE ;
     }
+    //==========Config initialization==========
+    Config config;
+    config.interface = argv[1];
+    config.ap_mac = Mac(argv[2]);
 
     //==========PCAP initialization==========
-    char* dev = argv[1];
     char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* pcap = handle_init(dev, errbuf);
+    pcap_t* pcap = handle_init(config.interface.c_str(), errbuf);
     if(pcap == nullptr) {
         return EXIT_FAILURE;
     }
