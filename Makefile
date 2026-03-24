@@ -7,7 +7,7 @@ all: $(TARGET)
 
 
 
-$(TARGET): main.cpp
+$(TARGET): main.cpp radiotap.cpp mac.cpp
 	$(CC) $(CFLAGS) $^ -o $@ -lpcap
 
 clean:
