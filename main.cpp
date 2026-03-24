@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "handler.h"
 #include "macframe.h"
+#include "beacon.h"
 
 
 void usage()
@@ -39,9 +40,19 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     //=========Find target AP's beacon frame=========
+    
     const u_char* packet;
     int len;
     packet = find_target_beacon(pcap, config.ap_mac, &len);
-    dump(packet, len);
+    // dump(packet, len);
+    ieee80211_mac_header* mac_header = (ieee80211_mac_header*)packet;
+
+    //=========Make CSA frame=========
+
+
+    //=========Parse beacon frame body=========
+    beacon_frame_body* frame_body = (beacon_frame_body*)(packet + sizeof(ieee80211_mac_header));
+    dump((const u_char*)frame_body, sizeof(*frame_body));
+
     return 0;
 }
