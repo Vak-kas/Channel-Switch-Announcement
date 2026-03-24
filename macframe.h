@@ -14,15 +14,23 @@ struct ieee80211_mac_header
 public:
     uint8_t getType() const { return (frame_control >> 2) & 0x3 ; }
     uint8_t getSubType() const { return (frame_control >> 4 ) & 0xF ; }
+    uint8_t getToDS() const { return (frame_control >> 8) & 0x1; }
+    uint8_t getFromDS() const { return (frame_control >> 9) & 0x1; }
 
 } __attribute__((__packed__));
 
-
-bool isBeaconFrame(const ieee80211_mac_header* header) 
+struct address_info
 {
-    return header->getType() == FrameType::MANAGEMENT 
-        && header->getSubType() == FrameMSubType::BEACON;
-}
+    Mac Receiver;
+    Mac Transmitter;
+    Mac Destination;
+    Mac Source;
+    Mac BSSID;
+};
+
+void setAddressInfo(const ieee80211_mac_header* header, address_info* info);
+bool isBeaconFrame(const ieee80211_mac_header* header);
+bool isTargetAP(const ieee80211_mac_header* header, const Mac& target_ap);
 
 enum FrameType 
 {
@@ -54,7 +62,7 @@ enum FrameCSubType
 
 enum FrameDSubType
 {
-    DATA = 0,
+    DATA_S = 0,
     DATA_CF_ACK = 1,
     DATA_CF_POLL = 2,
     DATA_CF_ACK_POLL = 3,
