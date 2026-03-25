@@ -25,4 +25,4 @@ public:
     bool operator==(const Mac& other) const { return memcmp(this->mac_, other.mac_, SIZE) == 0; }
     bool operator!=(const Mac& other) const { return memcmp(this->mac_, other.mac_, SIZE) != 0; }
 
-};
+} __attribute__((__packed__));
