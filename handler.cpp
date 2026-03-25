@@ -61,7 +61,11 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
         if(isBeaconFrame(mac_header) && isTargetAP(mac_header, config->ap_mac)) 
         {
             std::cout << "Found target AP's beacon frame!" << std::endl;
-            *len = header->caplen;
+            *len = header->caplen - radiotap_header->it_len;
+            // if(isFCS(packet)) 
+            // {
+            //     std::cout << "FCS detected" << std::endl;
+            // }
             config->ap_current_channel = getCurrentChannel(packet);
             return (u_char*)ieee80211_header;
         }
@@ -69,4 +73,9 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
     }
     //TODO : 특정 시간 동안 못찾으면 종료하는 로직 추가해야함.
     return nullptr;
+}
+
+int setSwitchChannel(int current_channel)
+{
+    return ((current_channel + 6) % 13) + 1; //1~13 채널 범위 유지
 }
