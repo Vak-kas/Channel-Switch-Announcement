@@ -8,13 +8,3 @@
 #include <unistd.h>
 #include <iostream>
 #include "mac.h"
-
-
-
-
-struct Config {
-    std::string interface;
-    Mac ap_mac;
-};
-
-extern Config config;
