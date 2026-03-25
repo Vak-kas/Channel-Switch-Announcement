@@ -4,6 +4,7 @@
 #include "macframe.h"
 
 
+
 pcap_t* handle_init(const char* dev, char* errbuf) {
     // Open the device for live capture
     pcap_t* pcap = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
@@ -36,7 +37,7 @@ void dump(const u_char* buf, int size) {
     printf("\n");
 }
 
-u_char* find_target_beacon(pcap_t* pcap, Mac ap_mac, int* len) {
+u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
     while (true) 
     {
         struct pcap_pkthdr* header;
@@ -57,10 +58,11 @@ u_char* find_target_beacon(pcap_t* pcap, Mac ap_mac, int* len) {
         const u_char* ieee80211_header = packet + radiotap_header->it_len;
         ieee80211_mac_header* mac_header = (ieee80211_mac_header*) ieee80211_header;
 
-        if(isBeaconFrame(mac_header) && isTargetAP(mac_header, ap_mac)) 
+        if(isBeaconFrame(mac_header) && isTargetAP(mac_header, config->ap_mac)) 
         {
             std::cout << "Found target AP's beacon frame!" << std::endl;
             *len = header->caplen;
+            config->ap_current_channel = getCurrentChannel(packet);
             return (u_char*)ieee80211_header;
         }
 
