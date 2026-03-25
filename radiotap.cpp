@@ -1,15 +1,6 @@
 #include "radiotap.h"
 #include <iostream>
 
-void dump2(const u_char* buf, int size) {
-    int i;
-    for (i = 0; i < size; i++) {
-        if (i != 0 && i % 16 == 0)
-            printf("\n");
-        printf("%02X ", buf[i]);
-    }
-    printf("\n");
-}
 int getCurrentChannel(const u_char* packet)
 {
     ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
