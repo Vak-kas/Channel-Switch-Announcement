@@ -1,6 +1,7 @@
 #include "ie.h"
+#include "pch.h"
 
-channel_switch_announcement_ie create_channel_switch_announcement_ie(uint8_t new_channel_number, uint8_t channel_switch_count) 
+channel_switch_announcement_ie create_channel_switch_announcement_ie(uint8_t new_channel_number, uint8_t channel_switch_count)
 {
     channel_switch_announcement_ie ie;
     ie.element_id = ieee80211_IE::CHANNEL_SWITCH_ANNOUNCEMENT;

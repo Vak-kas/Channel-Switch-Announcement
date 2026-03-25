@@ -1,5 +1,6 @@
 #pragma once
 #include <stdlib.h>
+#include <cstdint>
 
 struct channel_switch_announcement_ie
 {
