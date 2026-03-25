@@ -32,3 +32,18 @@ int getCurrentChannel(const u_char* packet)
     return -1;
 
 }
+
+bool isFCS(const u_char* packet)
+{
+    ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
+    uint32_t present = radiotap_header->it_present;
+    const uint8_t* ptr = packet + sizeof(*radiotap_header);
+
+    if (!(present & (1 << IEEE80211_RADIOTAP_FLAGS)))
+        return false;
+
+    uint8_t flags = *ptr;
+
+    // FCS bit 확인
+    return (flags & IEEE80211_RADIOTAP_F_FCS);
+}

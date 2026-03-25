@@ -13,6 +13,7 @@ struct ieee80211_radiotap_header
 
 
 int getCurrentChannel(const u_char* packet);
+bool isFCS(const u_char* packet);
 
 enum ieee80211_radiotap_presence {
 	IEEE80211_RADIOTAP_TSFT = 0,
