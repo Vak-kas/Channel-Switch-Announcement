@@ -4,7 +4,6 @@
 int getCurrentChannel(const u_char* packet)
 {
     ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
-    dump2(packet, radiotap_header->it_len);
     uint32_t present = radiotap_header->it_present;
     const uint8_t* ptr = packet + sizeof(*radiotap_header);
 
