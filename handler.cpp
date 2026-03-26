@@ -66,7 +66,8 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
             // {
             //     std::cout << "FCS detected" << std::endl;
             // }
-            config->ap_current_channel = getCurrentChannel(packet);
+            // config->ap_current_channel = getCurrentChannel(packet);
+            config->ap_current_channel = 6; //TODO : 채널 고정 (getCurrentChannel 함수 구현 후 제거)
             return (u_char*)ieee80211_header;
         }
 

@@ -1,6 +1,7 @@
 #include "radiotap.h"
 #include <iostream>
 
+//채널 가져오는 함수 (현재는 버그로 인해 채널 고정)
 int getCurrentChannel(const u_char* packet)
 {
     ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
