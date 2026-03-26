@@ -1,6 +1,5 @@
 #include "handler.h"
 #include "pch.h"
-#include "radiotap.h"
 #include "macframe.h"
 
 
@@ -37,7 +36,7 @@ void dump(const u_char* buf, int size) {
     printf("\n");
 }
 
-u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
+u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len, ieee80211_radiotap_header** rt_hdr) {
     while (true) 
     {
         struct pcap_pkthdr* header;
@@ -54,6 +53,7 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
         }
 
         ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
+        *rt_hdr = radiotap_header;
         // dump(packet, header->caplen);
         const u_char* ieee80211_header = packet + radiotap_header->it_len;
         ieee80211_mac_header* mac_header = (ieee80211_mac_header*) ieee80211_header;
@@ -61,13 +61,13 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
         if(isBeaconFrame(mac_header) && isTargetAP(mac_header, config->ap_mac)) 
         {
             std::cout << "Found target AP's beacon frame!" << std::endl;
-            *len = header->caplen - radiotap_header->it_len;
+            *len = header->caplen;
             // if(isFCS(packet)) 
             // {
             //     std::cout << "FCS detected" << std::endl;
             // }
             // config->ap_current_channel = getCurrentChannel(packet);
-            config->ap_current_channel = 6; //TODO : 채널 고정 (getCurrentChannel 함수 구현 후 제거)
+            config->ap_current_channel = 6; //TODO : 채널 고정 (getCurrentChannel 함수 버그 해결 필요)
             return (u_char*)ieee80211_header;
         }
 
