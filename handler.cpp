@@ -36,7 +36,7 @@ void dump(const u_char* buf, int size) {
     printf("\n");
 }
 
-u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len, ieee80211_radiotap_header** rt_hdr) {
+u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len) {
     while (true) 
     {
         struct pcap_pkthdr* header;
@@ -53,7 +53,6 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len, ieee80211_rad
         }
 
         ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
-        *rt_hdr = radiotap_header;
         // dump(packet, header->caplen);
         const u_char* ieee80211_header = packet + radiotap_header->it_len;
         ieee80211_mac_header* mac_header = (ieee80211_mac_header*) ieee80211_header;
@@ -68,7 +67,7 @@ u_char* find_target_beacon(pcap_t* pcap, Config* config, int* len, ieee80211_rad
             // }
             // config->ap_current_channel = getCurrentChannel(packet);
             config->ap_current_channel = 6; //TODO : 채널 고정 (getCurrentChannel 함수 버그 해결 필요)
-            return (u_char*)ieee80211_header;
+            return (u_char*)packet;
         }
 
     }
