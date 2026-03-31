@@ -45,34 +45,28 @@ int main(int argc, char* argv[]) {
     //=========Find target AP's beacon frame=========
     
     const u_char* packet;
-    int total_packet_len, packet_len;
-    ieee80211_radiotap_header* radiotap_header = nullptr;
-    packet = find_target_beacon(pcap, &config, &total_packet_len, &radiotap_header);
-    packet_len = total_packet_len - radiotap_header->it_len ;
-    ieee80211_mac_header* mac_header = (ieee80211_mac_header*)packet;
-    
-    std::cout << "Total Packet Length (with Radiotap): " << total_packet_len << std::endl;
-    std::cout << "802.11 Packet Length (without Radiotap): " << packet_len << std::endl;
+    int total_packet_len;
+    packet = find_target_beacon(pcap, &config, &total_packet_len);
 
-    dump(packet, packet_len);
-    std::cout << "========================" << std::endl;
+    // RadioTap v
+    ieee80211_radiotap_header* radiotap_header = (ieee80211_radiotap_header*) packet;
+    size_t radiotap_len = radiotap_header->it_len;
+
+    ieee80211_mac_header* mac_header = (ieee80211_mac_header*)(packet + radiotap_len);
+    size_t mac_header_len = sizeof(ieee80211_mac_header); // TODO : MAC Header 길이 계산 (QoS, HT 등 옵션에 따라 달라질 수 있음)
 
     //=========Make CSA frame=========
 
     std::cout << "Current Channel: " << config.ap_current_channel << std::endl;
     int switchChannel = setSwitchChannel(config.ap_current_channel);
-    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(11, 3); // 11번 채널 고정
+    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(11, 0); // 11번 채널 고정
 
     //=========Parse beacon frame body=========
-    beacon_frame_body* frame_body = (beacon_frame_body*)(packet + sizeof(ieee80211_mac_header));
-
-    //TODO : Beacon 타임스탬프 설정
-
-    //TODO : Beacon Interval 설정
+    beacon_frame_body* frame_body = (beacon_frame_body*)(packet + radiotap_len + mac_header_len);
 
     //Beacon Frame Body에서 IE 순회하면서 CSA IE 삽입할 위치 확인
-    const uint8_t* ptr = packet + sizeof(ieee80211_mac_header) + sizeof(beacon_frame_body);
-    const uint8_t* end = packet + packet_len;
+    const uint8_t* ptr = packet + radiotap_len + mac_header_len + sizeof(beacon_frame_body);
+    const uint8_t* end = packet + total_packet_len;
     const uint8_t* insert_pos = nullptr;
 
     while (ptr + 2 <= end) 
@@ -92,34 +86,39 @@ int main(int argc, char* argv[]) {
 
     //============================= 패킷 생성 =============================
 
-    // FCS 제거된 802.11 길이
-    int body_len = packet_len - 4;
+    // 전체 길이 = 기존 + CSA IE
+    int new_packet_len = total_packet_len + sizeof(csa_ie);
 
-    // 전체 길이 = radiotap + mac_frame_header + CSA  + body
-    int new_packet_len = radiotap_header->it_len + body_len + sizeof(csa_ie);
+    // 새 버퍼 생성
     u_char* new_packet = new u_char[new_packet_len];
 
-    //라디오 헤더 복사
-    memcpy(new_packet, radiotap_header, radiotap_header->it_len);
-
-    // 맥 프레임 기준 시작 위치
-    u_char* dst = new_packet + radiotap_header->it_len;
-
-    // CSA 삽입 위치까지 앞부분 복사
+    // 앞부분 복사 
+    // packet 시작 ~ insert_pos 전까지
     size_t front_len = insert_pos - packet;
-    memcpy(dst, packet, front_len);
+    memcpy(new_packet, packet, front_len);
 
     // CSA 삽입
-    memcpy(dst + front_len, &csa_ie, sizeof(csa_ie));
+    memcpy(new_packet + front_len, &csa_ie, sizeof(csa_ie));
 
-    // CSA 이후 복사
-    size_t back_len = body_len - front_len;
-    memcpy(dst + front_len + sizeof(csa_ie), insert_pos, back_len);
+    //뒷부분 복사
+    // insert_pos ~ 끝까지
+    size_t back_len = total_packet_len - front_len;
+    memcpy(new_packet + front_len + sizeof(csa_ie), insert_pos, back_len);
+
+
+    //추가 디테일
+    //TODO : RadioTap + Beacon 타임스탬프 설정
+
+    //TODO : Beacon Interval 설정
+
+    //TODO : SN 설정
+
+    // 디버깅
     dump(new_packet, new_packet_len);
 
-    //=====================================================================
+    // //=====================================================================
 
-    //============CSA 프레임 송신 ===========
+    // //============CSA 프레임 송신 ===========
     int cnt = 1;
     while (true)
     {
