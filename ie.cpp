@@ -31,5 +31,6 @@ const uint8_t* find_ie_end_by_tag(ieee80211_IE tag, const uint8_t* packet, int r
         }
         ptr += 2 + len;
     }
-    return nullptr; // 해당 태그의 IE가 없는 경우
+    // If tag not found, return end (append position)
+    return end; // 해당 태그의 IE가 없는 경우 그냥 맨 뒤에 삽입
 }
