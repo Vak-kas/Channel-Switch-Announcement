@@ -34,3 +34,41 @@ const uint8_t* find_ie_end_by_tag(ieee80211_IE tag, const uint8_t* packet, int r
     // If tag not found, return end (append position)
     return end; // 해당 태그의 IE가 없는 경우 그냥 맨 뒤에 삽입
 }
+
+
+int updateCSACount(u_char* packet)
+{
+    int count = 0;
+    ieee80211_radiotap_header* rt =(ieee80211_radiotap_header*)packet;
+
+    size_t rt_len = rt->it_len;
+
+    uint8_t* ptr = packet + rt_len + sizeof(ieee80211_mac_header)+ sizeof(beacon_frame_body);
+
+    // IE 순회
+    while (true)
+    {
+        uint8_t tag = ptr[0];
+        uint8_t len = ptr[1];
+
+        if (tag == ieee80211_IE::CHANNEL_SWITCH_ANNOUNCEMENT) // CSA IE
+        {
+            uint8_t* count_ptr = ptr + 2 + 2; // mode(1) + channel(1)
+            count = *count_ptr;
+            if (*count_ptr > 0)
+            {
+                (*count_ptr)--;
+            }
+            else
+            {
+                *(count_ptr) = CSA_COUNT; // 이미 0인 경우, 초기값으로 리셋
+            }
+
+            break;
+        }
+
+        ptr += 2 + len;
+    }
+
+    return count;
+}

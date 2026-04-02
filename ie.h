@@ -1,6 +1,12 @@
 #pragma once
 #include <stdlib.h>
 #include <cstdint>
+#include "radiotap.h"
+#include "packet_utils.h"
+#include "macframe.h"
+#include <arpa/inet.h> // ntohs, htons
+#include "management.h"
+#include "config.h"
 
 enum ieee80211_IE 
 {
@@ -28,6 +34,5 @@ struct channel_switch_announcement_ie
 
 channel_switch_announcement_ie create_channel_switch_announcement_ie(uint8_t new_channel_number, uint8_t channel_switch_count);
 const uint8_t* find_ie_end_by_tag(ieee80211_IE tag, const uint8_t* packet, int radiotap_len, int mac_header_len, int body_len, int total_packet_len);
-
-
+int updateCSACount(u_char* packet);
 
