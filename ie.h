@@ -11,8 +11,14 @@ struct channel_switch_announcement_ie
     uint8_t channel_switch_count;
 } __attribute__((__packed__));
 
+struct ie_injector
+{
+    
+};
+
 
 channel_switch_announcement_ie create_channel_switch_announcement_ie(uint8_t new_channel_number, uint8_t channel_switch_count);
+const uint8_t* find_ie_end_by_tag(ieee80211_IE tag, const uint8_t* packet, int radiotap_len, int mac_header_len, int body_len, int total_packet_len); 
 
 enum ieee80211_IE 
 {
@@ -28,3 +34,5 @@ enum ieee80211_IE
     VENDOR_SPECIFIC = 221
 }; 
 //Reference : https://www.nsnam.org/docs/release/3.28/doxygen/wifi-information-element_8h_source.html
+
+
