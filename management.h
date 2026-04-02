@@ -1,6 +1,12 @@
 #pragma once
 #include <stdlib.h>
 #include <cstdint>
+#include "radiotap.h"
+#include "packet_utils.h"
+#include "macframe.h"
+#include <arpa/inet.h> // ntohs, htons
+#include "ie.h"
+
 struct beacon_frame_body
 {
     uint64_t timestamp;
@@ -9,3 +15,4 @@ struct beacon_frame_body
 } __attribute__((__packed__));
 
 void print_beacon_frame_body(const beacon_frame_body* body);
+void updateSN(u_char* packet);
