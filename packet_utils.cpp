@@ -56,3 +56,9 @@ u_char* inject_data_into_packet(
 
     return new_packet;
 }
+
+
+void write_data_to_packet(u_char* packet, size_t offset, const uint8_t* data, size_t len)
+{
+    memcpy(packet + offset, data, len);
+}

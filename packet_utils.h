@@ -14,3 +14,5 @@ struct InsertData {
 u_char* inject_data_into_packet(const u_char* packet, int total_packet_len, 
     const std::vector<InsertData>& inserts, size_t& new_packet_len
 );
+
+void write_data_to_packet(u_char* packet, size_t offset, const uint8_t* data, size_t len);
